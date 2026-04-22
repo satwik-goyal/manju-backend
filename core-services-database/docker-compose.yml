@@ -1,0 +1,76 @@
+version: '3.8'
+
+services:
+  # ═══════════════════════════════════════════════════════
+  # PLATFORM DATABASE
+  # This is where sync metadata, ingested data, ontology,
+  # and everything YOUR platform needs lives.
+  # Uses PostGIS image because we need spatial extensions.
+  # ═══════════════════════════════════════════════════════
+  platform-db:
+    image: postgis/postgis:16-3.4
+    container_name: manju-platform-db
+    environment:
+      POSTGRES_DB: manju
+      POSTGRES_USER: manju
+      POSTGRES_PASSWORD: manju
+    ports:
+      - "5432:5432"    # Accessible on localhost:5432
+    volumes:
+      # Persist data between container restarts
+      - platform_data:/var/lib/postgresql/data
+      # Run initialization SQL when container first starts
+      - ./scripts/init-platform.sql:/docker-entrypoint-initdb.d/01-init.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U manju -d manju"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - manju-network
+
+  # ═══════════════════════════════════════════════════════
+  # TEST SOURCE DATABASE (Simulates a customer's database)
+  # This is a FAKE fire department database.
+  # Your digestion engine connects to THIS as an external
+  # data source, discovers its tables, and syncs its data.
+  # Uses plain postgres image (no extensions needed).
+  # ═══════════════════════════════════════════════════════
+  source-db:
+    image: postgres:16-alpine
+    container_name: manju-source-db
+    environment:
+      POSTGRES_DB: warehouse
+      POSTGRES_USER: warehouse_user
+      POSTGRES_PASSWORD: warehouse
+    ports:
+      - "5433:5432"    # Accessible on localhost:5433 (different port!)
+    volumes:
+      # Persist data between container restarts
+      - source_data:/var/lib/postgresql/data
+      # Seed with fire department sample data on first start
+      - ./scripts/warehouse-seed.sql:/docker-entrypoint-initdb.d/01-seed.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U warehouse_user -d warehouse"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - manju-network
+
+# ═══════════════════════════════════════════════════════
+# NAMED VOLUMES — data persists even if containers stop
+# ═══════════════════════════════════════════════════════
+volumes:
+  platform_data:
+    name: manju-platform-data
+  source_data:
+    name: manju-source-data
+
+# ═══════════════════════════════════════════════════════
+# NETWORK — both databases can see each other by name
+# ═══════════════════════════════════════════════════════
+networks:
+  manju-network:
+    name: manju-network
+    driver: bridge
