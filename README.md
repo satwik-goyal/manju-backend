@@ -120,29 +120,6 @@ The kernel stores everything in these tables:
 Objects have extracted `location` (PostGIS geometry) and `status` columns for 
 fast spatial and status-based filtering, while full properties live in JSONB.
 
-## CURRENT PHASE — WHAT I'M BUILDING FIRST
-
-I am building the **SQL Digestion Engine** as the first component. This is the 
-foundation that enables everything else — before ontology mapping, before plugins, 
-before the map, I need data flowing into the platform.
-
-The digestion engine:
-1. **DISCOVER** — Connect to a source database, introspect all tables, columns, 
-   types, primary keys, foreign keys, detect timestamp columns and semantic types
-2. **SNAPSHOT** — Full initial copy of all data into platform DB as JSONB rows
-3. **TRACK** — Continuously detect changes via timestamp-based incremental sync, 
-   full-table hash comparison, or row-level hash diffing
-4. **VERSION** — Every sync creates a versioned snapshot enabling time-travel queries
-5. **CATALOG** — Maintain registry of all sources, tables, columns, sync status
-
-The engine is a Go library with three interfaces:
-- **HTTP API** (Echo) — for frontend and external integrations
-- **Background Scheduler** — runs syncs on configured intervals
-- **CLI** (future) — for developer convenience
-
-The connector system is interface-based, starting with PostgreSQL driver, 
-with MySQL and MSSQL planned.
-
 ## WHAT I'VE DECIDED
 
 - Go/Java for all backend services except AI (Python FastAPI for that)
